@@ -183,6 +183,7 @@ function ymStr(y,m){return y+'-'+String(m).padStart(2,'0')}
 // ===== STORAGE (Google Sheets API + localStorage fallback) =====
 // ===== DATA LAYER (Single Sheet: "data") =====
 var API_URL='https://script.google.com/macros/s/AKfycbw4NKRm0GrUmHYpBDHsyt8dfYw97qL2QCkkkHIWZSBFPGxIYJ95R6gw5hP-n2jmjMg/exec';
+function storageOk(){try{var t='__test__';localStorage.setItem(t,t);localStorage.removeItem(t);return true}catch(e){return false}}
 var HAS_STORAGE=storageOk();
 var IS_ONLINE=true;
 var MEM_EV=[],MEM_CA=[];
