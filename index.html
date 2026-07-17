@@ -180,14 +180,79 @@ function fmtDate(d){return d?d.replace(/-/g,'/'):'' }
 function todayStr(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function ymStr(y,m){return y+'-'+String(m).padStart(2,'0')}
 
-// ===== STORAGE =====
+// ===== STORAGE (Google Sheets API + localStorage fallback) =====
+var API_URL='https://script.google.com/macros/s/AKfycbw4NKRm0GrUmHYpBDHsyt8dfYw97qL2QCkkkHIWZSBFPGxIYJ95R6gw5hP-n2jmjMg/exec';
+var MEM_EV=[],MEM_CA=[];
+var IS_ONLINE=true;
+var SYNC_TIMEOUT=null;
+
 function storageOk(){try{var t='__t';localStorage.setItem(t,t);localStorage.removeItem(t);return true}catch(e){return false}}
 var HAS_STORAGE=storageOk();
-var MEM_EV=[],MEM_CA=[];
-function getEvents(){if(HAS_STORAGE){try{return JSON.parse(localStorage.getItem('dft_events')||'[]')}catch(e){return[]}}return MEM_EV}
-function setEvents(a){if(HAS_STORAGE){localStorage.setItem('dft_events',JSON.stringify(a))}else{MEM_EV=a}}
-function getCases(){if(HAS_STORAGE){try{return JSON.parse(localStorage.getItem('dft_cases')||'[]')}catch(e){return[]}}return MEM_CA}
-function setCases(a){if(HAS_STORAGE){localStorage.setItem('dft_cases',JSON.stringify(a))}else{MEM_CA=a}}
+
+function getEvents(){return MEM_EV}
+function setEvents(a){MEM_EV=a;saveLocal();scheduleSyncToCloud()}
+function getCases(){return MEM_CA}
+function setCases(a){MEM_CA=a;saveLocal();scheduleSyncToCloud()}
+
+function saveLocal(){
+  if(!HAS_STORAGE)return;
+  try{localStorage.setItem('dft_events',JSON.stringify(MEM_EV));localStorage.setItem('dft_cases',JSON.stringify(MEM_CA))}catch(e){}
+}
+function loadLocal(){
+  if(!HAS_STORAGE)return false;
+  try{
+    var ev=JSON.parse(localStorage.getItem('dft_events')||'[]');
+    var ca=JSON.parse(localStorage.getItem('dft_cases')||'[]');
+    MEM_EV=ev;MEM_CA=ca;return(ev.length>0||ca.length>0)
+  }catch(e){return false}
+}
+
+// Sync to Google Sheets (debounced - wait 1.5s after last change)
+function scheduleSyncToCloud(){
+  if(SYNC_TIMEOUT)clearTimeout(SYNC_TIMEOUT);
+  SYNC_TIMEOUT=setTimeout(syncToCloud,1500);
+}
+function syncToCloud(){
+  if(!IS_ONLINE)return;
+  var payload=JSON.stringify({action:'saveAll',cases:MEM_CA,events:MEM_EV});
+  fetch(API_URL,{method:'POST',redirect:'follow',body:payload})
+  .then(function(){showToast('\u{1F4BE} \u5DF2\u540C\u6B65')})
+  .catch(function(err){console.warn('Sync failed:',err);IS_ONLINE=false})
+}
+
+// Load from Google Sheets API
+function loadFromCloud(){
+  return Promise.all([
+    fetch(API_URL+'?action=getCases').then(function(r){return r.json()}),
+    fetch(API_URL+'?action=getEvents').then(function(r){return r.json()})
+  ]).then(function(results){
+    MEM_CA=results[0]||[];
+    MEM_EV=results[1]||[];
+    // Fix boolean fields that come as strings
+    MEM_EV.forEach(function(e){
+      if(e.companyBilled==='TRUE')e.companyBilled=true;
+      else if(e.companyBilled==='FALSE'||!e.companyBilled)e.companyBilled=false;
+      if(e.bonusClaimed==='TRUE')e.bonusClaimed=true;
+      else if(e.bonusClaimed==='FALSE'||!e.bonusClaimed)e.bonusClaimed=false;
+      if(e.notQualified==='TRUE')e.notQualified=true;
+      else if(e.notQualified==='FALSE'||!e.notQualified)e.notQualified=false;
+      if(e.amountPreTax)e.amountPreTax=Number(e.amountPreTax);
+      if(e.amountWithTax)e.amountWithTax=Number(e.amountWithTax);
+    });
+    MEM_CA.forEach(function(c){
+      if(c.isClosed==='TRUE')c.isClosed=true;
+      else if(c.isClosed==='FALSE'||!c.isClosed)c.isClosed=false;
+    });
+    saveLocal();
+    IS_ONLINE=true;
+    return true;
+  }).catch(function(err){
+    console.warn('Cloud load failed, using local:',err);
+    IS_ONLINE=false;
+    loadLocal();
+    return false;
+  });
+}
 
 // ===== PRICING =====
 var PRICING={'丈量放樣':5500,'平面配置圖(>30坪)':9500,'平面配置圖(≤30坪)':8000,'平面修改(>30坪)':9500,'平面修改(≤30坪)':8000,'施工圖':19000,'其他':null};
@@ -198,35 +263,28 @@ var expandedCase=null;
 
 // ===== INIT =====
 (function(){
-  try{
-    var d=new Date();viewY=d.getFullYear();viewM=d.getMonth()+1;settleY=viewY;settleM=viewM;
-    seed();setupTabs();renderDashboard();renderCases();renderSettle();initForm();
-  }catch(err){
-    document.getElementById('dashboardContent').innerHTML='<div style="padding:20px;color:red">Error: '+err.message+'</div>';
-  }
+  var d=new Date();viewY=d.getFullYear();viewM=d.getMonth()+1;settleY=viewY;settleM=viewM;
+  document.getElementById('dashboardContent').innerHTML='<div class="empty-state"><div class="empty-icon">⏳</div>載入中...</div>';
+  setupTabs();
+  // Try cloud first, fallback to local
+  loadFromCloud().then(function(fromCloud){
+    if(fromCloud){
+      document.title='製圖獎金追蹤 (雲端)';
+    }else{
+      document.title='製圖獎金追蹤 (離線)';
+      if(MEM_EV.length===0&&MEM_CA.length===0){
+        // Show empty state
+      }
+    }
+    renderDashboard();renderCases();renderSettle();initForm();
+  }).catch(function(){
+    loadLocal();
+    renderDashboard();renderCases();renderSettle();initForm();
+  });
 })();
 
-// ===== SEED =====
-function seed(){
-  if(getEvents().length>0||getCases().length>0)return;
-  var y=new Date().getFullYear(),m=new Date().getMonth()+1;
-  var pad=function(n){return String(n).padStart(2,'0')};
-  var mk=function(d){return y+'-'+pad(m)+'-'+pad(d)};
-  var c1=genId(),c2=genId(),c3=genId();
-  setCases([
-    {id:c1,caseName:'台北市大安區和平東路120號',status:'套房',customStatus:'',pm:'陳小明',createdDate:mk(2),isClosed:false,closedDate:null,closedMonth:null},
-    {id:c2,caseName:'新北市板橋區文化路二段88號',status:'軟裝',customStatus:'',pm:'林美玲',createdDate:mk(5),isClosed:false,closedDate:null,closedMonth:null},
-    {id:c3,caseName:'台北市信義區松仁路100號',status:'新型態',customStatus:'',pm:'王大偉',createdDate:mk(1),isClosed:false,closedDate:null,closedMonth:null}
-  ]);
-  var mkEv=function(caseId,caseName,type,amt,company,day,pm){return{id:genId(),date:mk(day),caseId:caseId,caseName:caseName,eventType:type,amountPreTax:amt,amountWithTax:Math.round(amt*1.05),company:company,pm:pm||'',note:'',companyBilled:false,bonusClaimed:false,notQualified:false}};
-  setEvents([
-    mkEv(c1,'台北市大安區和平東路120號','丈量放樣',5500,'ARK',3,'陳小明'),
-    mkEv(c1,'台北市大安區和平東路120號','平面配置圖(≤30坪)',8000,'ARK',10,'陳小明'),
-    mkEv(c2,'新北市板橋區文化路二段88號','丈量放樣',5500,'好租',6,'林美玲'),
-    mkEv(c2,'新北市板橋區文化路二段88號','平面修改(>30坪)',9500,'好租',14,'林美玲'),
-    mkEv(c3,'台北市信義區松仁路100號','施工圖',19000,'AAM',8,'王大偉')
-  ]);
-}
+// ===== SEED (disabled - using cloud) =====
+function seed(){}
 
 // ===== TABS =====
 function setupTabs(){
@@ -546,7 +604,7 @@ function importJSON(inputEl){
   reader.onload=function(ev){
     try{
       var data=JSON.parse(ev.target.result);
-      if(data.cases&&data.events){setCases(data.cases);setEvents(data.events);renderDashboard();renderCases();renderSettle();showToast('匯入成功！')}
+      if(data.cases&&data.events){MEM_CA=data.cases;MEM_EV=data.events;saveLocal();syncToCloud();renderDashboard();renderCases();renderSettle();showToast('匯入成功！')}
       else{alert('檔案格式不正確')}
     }catch(err){alert('匯入失敗: '+err.message)}
   };
