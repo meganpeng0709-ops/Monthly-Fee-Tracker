@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>製圖獎金追蹤</title>
+<style>
+:root{--primary:#2F5496;--primary-light:#4A72B8;--success:#27AE60;--warning:#E67E22;--danger:#E74C3C;--bg:#F5F7FA;--text:#333;--text-muted:#888;--border:#e0e0e0}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);min-height:100vh;display:flex;justify-content:center}
+#app{width:100%;max-width:480px;min-height:100vh;position:relative;background:var(--bg)}
+.tab-content{display:none;padding-bottom:70px}.tab-content.active{display:block}
+.page-header{background:var(--primary);color:white;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.page-header h1{font-size:17px;font-weight:600}
+.nav-btn{background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer;color:white;display:flex;align-items:center;justify-content:center;font-weight:bold}
+.nav-btn:hover{background:rgba(255,255,255,0.35)}
+.month-label{font-size:16px;font-weight:600;color:white}
+.tab-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;height:56px;background:var(--primary);display:flex;z-index:100}
+.tab-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,0.6);font-size:10px;gap:2px;border:none;background:transparent;padding:0}
+.tab-item .tab-icon{font-size:18px}.tab-item.active{color:white;font-weight:bold}
+.section-title{font-size:13px;font-weight:600;color:var(--text-muted);padding:12px 16px 6px;letter-spacing:0.5px}
+.card{background:white;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin:8px 16px;padding:14px;position:relative;border-left:4px solid var(--primary)}
+.card.dimmed{opacity:0.45}
+.card.closed-card{border-left-color:var(--danger);background:#fef5f5}
+.card-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px}
+.badges{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+.badge{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600}
+.badge-company{background:#E0F2FE;color:#0369A1}
+.badge-orange{background:#FED7AA;color:#C2410C}
+.badge-purple{background:#EDE9FE;color:#6D28D9}
+.badge-teal{background:#CCFBF1;color:#0F766E}
+.badge-blue{background:#DBEAFE;color:#1D4ED8}
+.badge-gray{background:#F3F4F6;color:#555}
+.badge-red{background:#FEE2E2;color:#B91C1C}
+.badge-green{background:#D1FAE5;color:#065F46}
+.event-info{font-size:13px;color:var(--text);margin-bottom:8px}
+.event-date{color:var(--text-muted);margin-right:6px}
+.event-amount{font-weight:700;color:var(--primary);margin-left:6px}
+.billing-btns{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.bill-btn{padding:5px 10px;border-radius:16px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:white;color:var(--text)}
+.bill-btn.checked-green{border-color:var(--success);color:var(--success);background:#f0fdf4}
+.bill-btn.checked-gold{border-color:#D97706;color:#D97706;background:#FFFBEB}
+.bill-btn.checked-red{border-color:var(--danger);color:var(--danger);background:#FEF2F2}
+.edit-btn{position:absolute;top:10px;right:10px;background:none;border:none;font-size:14px;cursor:pointer;color:var(--text-muted);padding:4px 6px;border-radius:4px}
+.edit-btn:hover{background:#f0f0f0;color:var(--primary)}
+.month-summary{background:var(--primary);color:white;border-radius:10px;margin:12px 16px;padding:14px 16px}
+.ms-label{font-size:11px;opacity:0.8}.ms-value{font-size:20px;font-weight:700;margin-top:2px}.ms-tax{font-size:12px;opacity:0.7;margin-top:2px}
+.fab{position:fixed;bottom:72px;right:calc(50% - 240px + 20px);width:52px;height:52px;border-radius:50%;background:var(--primary);color:white;font-size:28px;border:none;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:50}
+@media(max-width:480px){.fab{right:20px}}
+.form-section{padding:16px}.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:#444;margin-bottom:4px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;color:#333;background:white;outline:none}
+.form-group input:focus,.form-group select:focus{border-color:var(--primary)}
+.form-group input[readonly]{background:#f5f5f5;color:#666}
+.form-check{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.form-check input[type=checkbox]{width:18px;height:18px}
+.form-check label{font-size:13px;color:#444}
+.btn-primary{width:100%;padding:12px;background:var(--primary);color:white;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:8px}
+.btn-primary:hover{background:var(--primary-light)}
+.btn-cancel{display:block;text-align:center;color:#888;font-size:13px;cursor:pointer;padding:8px;background:none;border:none;width:100%}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:150;justify-content:center;align-items:flex-end}
+.modal-overlay.open{display:flex}
+.modal-box{background:white;width:100%;max-width:480px;border-radius:16px 16px 0 0;padding:20px 16px 32px;max-height:85vh;overflow-y:auto}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.modal-header h2{font-size:17px;font-weight:700}.modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:#888;padding:4px 8px}
+.case-card{background:white;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin:8px 16px;overflow:hidden}
+.case-card-header{padding:12px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.case-card-header:hover{background:#fafafa}
+.case-title{font-size:14px;font-weight:700;color:var(--text)}
+.case-meta{font-size:11px;color:var(--text-muted);margin-top:2px}
+.case-actions{display:flex;gap:6px}
+.btn-sm{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:none;white-space:nowrap}
+.btn-close-case{background:#FEE2E2;color:var(--danger)}.btn-reopen{background:#D1FAE5;color:#065F46}.btn-delete{background:#F3F4F6;color:#666}
+.case-timeline{display:none;border-top:1px solid #f0f0f0;padding:12px 14px;background:#fafafa}
+.case-timeline.open{display:block}
+.tl-item{font-size:12px;color:#444;padding:4px 0;border-left:2px solid #ddd;padding-left:10px;margin-left:6px}
+.tl-status{font-size:11px;margin-left:6px}
+.settle-section{margin:10px 16px}.settle-header{font-size:14px;font-weight:700;color:var(--primary);padding:8px 0}
+.settle-faded{opacity:0.6}
+.settle-company{font-size:13px;font-weight:700;color:var(--primary);padding:10px 0 4px}
+.settle-case{font-size:12px;font-weight:600;color:#555;padding:4px 0 2px;border-bottom:1px solid #f0f0f0}
+.settle-table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:10px}
+.settle-table td{padding:5px 6px;border-bottom:1px solid #f5f5f5}
+.settle-table td:nth-child(3),.settle-table td:nth-child(4){text-align:right}
+.settle-subtotal{font-weight:700;background:#EFF6FF}
+.settle-btn{width:100%;padding:12px;background:var(--success);color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-top:10px}
+.settle-btn:hover{background:#219a52}
+.action-btns{display:flex;gap:8px;margin:10px 16px;flex-wrap:wrap}
+.action-btn{flex:1;padding:10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--primary);color:var(--primary);background:white;text-align:center}
+.action-btn:hover{background:var(--primary);color:white}
+.settle-month-nav{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:white;border-bottom:1px solid #eee;position:sticky;top:0;z-index:10}
+.settle-month-label{font-size:14px;font-weight:600;color:var(--primary)}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--success);color:white;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:200;box-shadow:0 4px 12px rgba(0,0,0,0.2);opacity:0;transition:opacity 0.3s}.toast.show{opacity:1}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-muted)}
+.empty-state .empty-icon{font-size:40px;margin-bottom:10px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="tab1" class="tab-content active">
+    <div class="page-header">
+      <button class="nav-btn" onclick="changeMonth(-1)">&#8249;</button>
+      <span class="month-label" id="monthLabel"></span>
+      <button class="nav-btn" onclick="changeMonth(1)">&#8250;</button>
+    </div>
+    <div id="dashboardContent"></div>
+    <button class="fab" onclick="switchTab('tab2')" title="新增事件">+</button>
+  </div>
+  <div id="tab2" class="tab-content">
+    <div class="page-header"><div style="width:32px"></div><h1>新增事件</h1><div style="width:32px"></div></div>
+    <div class="form-section">
+      <div class="form-group"><label>日期 *</label><input type="date" id="fDate"></div>
+      <div class="form-group"><label>案件 *</label><select id="fCase"><option value="">-- 選擇案件 --</option></select></div>
+      <div class="form-group"><label>事件類型 *</label>
+        <select id="fType" onchange="onTypeChange()"><option value="">-- 選擇類型 --</option><option value="丈量放樣">丈量放樣</option><option value="平面配置圖(>30坪)">平面配置圖(>30坪)</option><option value="平面配置圖(≤30坪)">平面配置圖(≤30坪)</option><option value="平面修改(>30坪)">平面修改(>30坪)</option><option value="平面修改(≤30坪)">平面修改(≤30坪)</option><option value="施工圖">施工圖</option><option value="其他">其他</option></select>
+      </div>
+      <div class="form-group"><label>金額（未稅）*</label><input type="number" id="fAmount" min="0" oninput="updateTax()"></div>
+      <div class="form-group"><label>含稅金額</label><input type="text" id="fTax" readonly></div>
+      <div class="form-group"><label>請款公司 *</label><select id="fCompany"><option value="">-- 選擇公司 --</option><option value="好租">好租</option><option value="ARK">ARK</option><option value="AAM">AAM</option></select></div>
+      <div class="form-group"><label>PM（選填）</label><input type="text" id="fPM" placeholder="選填"></div>
+      <div class="form-group"><label>備註（選填）</label><input type="text" id="fNote" placeholder="選填"></div>
+      <button class="btn-primary" onclick="saveEvent()">儲存</button>
+      <button class="btn-cancel" onclick="switchTab('tab1')">取消</button>
+    </div>
+  </div>
+  <div id="tab3" class="tab-content">
+    <div class="page-header"><h1>案件管理</h1><button class="nav-btn" onclick="openAddCaseModal()" style="font-size:20px">+</button></div>
+    <div id="caseListContent"></div>
+  </div>
+  <div id="tab4" class="tab-content">
+    <div class="page-header"><div style="width:32px"></div><h1>月結報表</h1><div style="width:32px"></div></div>
+    <div class="settle-month-nav">
+      <button class="nav-btn" onclick="changeSettleMonth(-1)" style="color:var(--primary);background:#eee">&#8249;</button>
+      <span class="settle-month-label" id="settleLabel"></span>
+      <button class="nav-btn" onclick="changeSettleMonth(1)" style="color:var(--primary);background:#eee">&#8250;</button>
+    </div>
+    <div class="action-btns">
+      <button class="action-btn" onclick="window.print()">🖨️ 列印</button>
+      <button class="action-btn" onclick="exportJSON()">📤 匯出</button>
+      <label class="action-btn" style="cursor:pointer">📥 匯入<input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)"></label>
+    </div>
+    <div id="settleContent"></div>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-item active" data-tab="tab1"><span class="tab-icon">📋</span><span>看板</span></button>
+    <button class="tab-item" data-tab="tab2"><span class="tab-icon">➕</span><span>新增</span></button>
+    <button class="tab-item" data-tab="tab3"><span class="tab-icon">📁</span><span>案件</span></button>
+    <button class="tab-item" data-tab="tab4"><span class="tab-icon">💰</span><span>結算</span></button>
+  </div>
+  <div class="modal-overlay" id="addCaseModal"><div class="modal-box">
+    <div class="modal-header"><h2>新增案件</h2><button class="modal-close" onclick="closeAddCaseModal()">✕</button></div>
+    <div class="form-group"><label>案件名稱 *</label><input type="text" id="mName" placeholder="輸入案件名稱(地址)"></div>
+    <div class="form-group"><label>狀態</label><select id="mStatus" onchange="toggleCustomStatus()"><option value="套房">套房</option><option value="軟裝">軟裝</option><option value="分戶變使">分戶變使</option><option value="新型態">新型態</option><option value="其他">其他</option></select></div>
+    <div class="form-group" id="customStatusGroup" style="display:none"><label>自訂狀態</label><input type="text" id="mCustomStatus" placeholder="輸入自訂狀態"></div>
+    <div class="form-group"><label>PM（選填）</label><input type="text" id="mPM" placeholder="PM 姓名"></div>
+    <div class="form-group"><label>建案日期</label><input type="date" id="mDate"></div>
+    <button class="btn-primary" onclick="saveNewCase()">儲存案件</button>
+  </div></div>
+  <div class="modal-overlay" id="editEventModal"><div class="modal-box">
+    <div class="modal-header"><h2>編輯事件</h2><button class="modal-close" onclick="closeEditModal()">✕</button></div>
+    <input type="hidden" id="editId">
+    <div class="form-group"><label>日期</label><input type="date" id="eDate"></div>
+    <div class="form-group"><label>事件類型</label><select id="eType" onchange="onEditTypeChange()"><option value="丈量放樣">丈量放樣</option><option value="平面配置圖(>30坪)">平面配置圖(>30坪)</option><option value="平面配置圖(≤30坪)">平面配置圖(≤30坪)</option><option value="平面修改(>30坪)">平面修改(>30坪)</option><option value="平面修改(≤30坪)">平面修改(≤30坪)</option><option value="施工圖">施工圖</option><option value="其他">其他</option></select></div>
+    <div class="form-group"><label>金額（未稅）</label><input type="number" id="eAmount" min="0" oninput="updateEditTax()"></div>
+    <div class="form-group"><label>含稅金額</label><input type="text" id="eTax" readonly></div>
+    <div class="form-group"><label>請款公司</label><select id="eCompany"><option value="好租">好租</option><option value="ARK">ARK</option><option value="AAM">AAM</option></select></div>
+    <div class="form-group"><label>PM</label><input type="text" id="ePM"></div>
+    <div class="form-group"><label>備註</label><input type="text" id="eNote"></div>
+    
+    <button class="btn-primary" onclick="saveEditEvent()">儲存修改</button>
+    <button class="btn-cancel" onclick="closeEditModal()">取消</button>
+  </div></div>
+  <div class="toast" id="toast"></div>
+</div>
+<script>
+// ===== UTILS =====
+function genId(){try{if(typeof crypto!=='undefined'&&crypto.randomUUID)return crypto.randomUUID()}catch(e){}return Math.random().toString(36).substr(2,9)+Date.now().toString(36)}
+function fmtMoney(n){return 'NT$'+Math.round(n).toLocaleString('zh-TW')}
+function fmtDate(d){return d?d.replace(/-/g,'/'):'' }
+function todayStr(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function ymStr(y,m){return y+'-'+String(m).padStart(2,'0')}
+
+// ===== STORAGE =====
+function storageOk(){try{var t='__t';localStorage.setItem(t,t);localStorage.removeItem(t);return true}catch(e){return false}}
+var HAS_STORAGE=storageOk();
+var MEM_EV=[],MEM_CA=[];
+function getEvents(){if(HAS_STORAGE){try{return JSON.parse(localStorage.getItem('dft_events')||'[]')}catch(e){return[]}}return MEM_EV}
+function setEvents(a){if(HAS_STORAGE){localStorage.setItem('dft_events',JSON.stringify(a))}else{MEM_EV=a}}
+function getCases(){if(HAS_STORAGE){try{return JSON.parse(localStorage.getItem('dft_cases')||'[]')}catch(e){return[]}}return MEM_CA}
+function setCases(a){if(HAS_STORAGE){localStorage.setItem('dft_cases',JSON.stringify(a))}else{MEM_CA=a}}
+
+// ===== PRICING =====
+var PRICING={'丈量放樣':5500,'平面配置圖(>30坪)':9500,'平面配置圖(≤30坪)':8000,'平面修改(>30坪)':9500,'平面修改(≤30坪)':8000,'施工圖':19000,'其他':null};
+
+// ===== STATE =====
+var viewY,viewM,settleY,settleM;
+var expandedCase=null;
+
+// ===== INIT =====
+(function(){
+  try{
+    var d=new Date();viewY=d.getFullYear();viewM=d.getMonth()+1;settleY=viewY;settleM=viewM;
+    seed();setupTabs();renderDashboard();renderCases();renderSettle();initForm();
+  }catch(err){
+    document.getElementById('dashboardContent').innerHTML='<div style="padding:20px;color:red">Error: '+err.message+'</div>';
+  }
+})();
+
+// ===== SEED =====
+function seed(){
+  if(getEvents().length>0||getCases().length>0)return;
+  var y=new Date().getFullYear(),m=new Date().getMonth()+1;
+  var pad=function(n){return String(n).padStart(2,'0')};
+  var mk=function(d){return y+'-'+pad(m)+'-'+pad(d)};
+  var c1=genId(),c2=genId(),c3=genId();
+  setCases([
+    {id:c1,caseName:'台北市大安區和平東路120號',status:'套房',customStatus:'',pm:'陳小明',createdDate:mk(2),isClosed:false,closedDate:null,closedMonth:null},
+    {id:c2,caseName:'新北市板橋區文化路二段88號',status:'軟裝',customStatus:'',pm:'林美玲',createdDate:mk(5),isClosed:false,closedDate:null,closedMonth:null},
+    {id:c3,caseName:'台北市信義區松仁路100號',status:'新型態',customStatus:'',pm:'王大偉',createdDate:mk(1),isClosed:false,closedDate:null,closedMonth:null}
+  ]);
+  var mkEv=function(caseId,caseName,type,amt,company,day,pm){return{id:genId(),date:mk(day),caseId:caseId,caseName:caseName,eventType:type,amountPreTax:amt,amountWithTax:Math.round(amt*1.05),company:company,pm:pm||'',note:'',companyBilled:false,bonusClaimed:false,notQualified:false}};
+  setEvents([
+    mkEv(c1,'台北市大安區和平東路120號','丈量放樣',5500,'ARK',3,'陳小明'),
+    mkEv(c1,'台北市大安區和平東路120號','平面配置圖(≤30坪)',8000,'ARK',10,'陳小明'),
+    mkEv(c2,'新北市板橋區文化路二段88號','丈量放樣',5500,'好租',6,'林美玲'),
+    mkEv(c2,'新北市板橋區文化路二段88號','平面修改(>30坪)',9500,'好租',14,'林美玲'),
+    mkEv(c3,'台北市信義區松仁路100號','施工圖',19000,'AAM',8,'王大偉')
+  ]);
+}
+
+// ===== TABS =====
+function setupTabs(){
+  var btns=document.querySelectorAll('.tab-item');
+  for(var i=0;i<btns.length;i++){
+    btns[i].addEventListener('click',function(){switchTab(this.getAttribute('data-tab'))});
+  }
+}
+function switchTab(tabId){
+  var tabs=document.querySelectorAll('.tab-content');for(var i=0;i<tabs.length;i++)tabs[i].classList.remove('active');
+  document.getElementById(tabId).classList.add('active');
+  var btns=document.querySelectorAll('.tab-item');for(var i=0;i<btns.length;i++)btns[i].classList.toggle('active',btns[i].getAttribute('data-tab')===tabId);
+  document.querySelector('.fab').style.display=tabId==='tab1'?'flex':'none';
+  if(tabId==='tab1')renderDashboard();
+  if(tabId==='tab2')initForm();
+  if(tabId==='tab3')renderCases();
+  if(tabId==='tab4'){settleY=viewY;settleM=viewM;renderSettle();}
+}
+
+// ===== TAB 1: DASHBOARD (monthly only - NOT cumulative) =====
+function changeMonth(dir){viewM+=dir;if(viewM>12){viewM=1;viewY++}if(viewM<1){viewM=12;viewY--}renderDashboard()}
+
+function renderDashboard(){
+  var events=getEvents();
+  var cases=getCases();
+  var ym=ymStr(viewY,viewM);
+  document.getElementById('monthLabel').textContent=viewY+'年'+viewM+'月';
+
+  // Only events in THIS month
+  var monthEvents=events.filter(function(e){
+    return e.date.substring(0,7)===ym;
+  });
+
+  // Filter out events from closed cases (closed before this month)
+  monthEvents=monthEvents.filter(function(e){
+    var c=cases.find(function(x){return x.id===e.caseId});
+    if(!c)return false;
+    if(c.isClosed&&c.closedMonth&&c.closedMonth<ym)return false;
+    return true;
+  });
+
+  // Sort by date
+  monthEvents.sort(function(a,b){return a.date.localeCompare(b.date)});
+
+  var html='';
+  if(monthEvents.length===0){
+    html+='<div class="empty-state"><div class="empty-icon">📋</div>本月無事件紀錄</div>';
+  }else{
+    html+='<div class="section-title">📌 '+viewM+'月 事件（'+monthEvents.length+'筆）</div>';
+    var totalUnbilled=0;
+    for(var i=0;i<monthEvents.length;i++){
+      var e=monthEvents[i];
+      var c=cases.find(function(x){return x.id===e.caseId});
+      var status=c?(c.customStatus||c.status):'';
+      var allDone=e.companyBilled&&(e.bonusClaimed||e.notQualified);
+      html+='<div class="card'+(allDone?' dimmed':'')+'">';
+      html+='<button class="edit-btn" onclick="openEditModal(\''+e.id+'\')">✏️</button>';
+      html+='<div class="card-title">'+e.caseName+'</div>';
+      html+='<div class="badges">';
+      if(e.company)html+='<span class="badge badge-company">'+e.company+'</span>';
+      if(status)html+='<span class="badge '+statusBadgeClass(c?c.status:'')+'">'+status+'</span>';
+      if(e.pm)html+='<span class="badge badge-gray">PM:'+e.pm+'</span>';
+      if(e.note)html+='<span class="badge badge-purple">'+e.note+'</span>';
+      html+='</div>';
+      html+='<div class="event-info"><span class="event-date">'+fmtDate(e.date)+'</span>'+e.eventType+'<span class="event-amount">'+fmtMoney(e.amountPreTax)+'</span></div>';
+      // 3 toggle buttons
+      html+='<div class="billing-btns">';
+      html+='<button class="bill-btn'+(e.companyBilled?' checked-green':'')+'" onclick="toggleStatus(\''+e.id+'\',\'companyBilled\')">'+(e.companyBilled?'✅':'⬜')+' 公司請款</button>';
+      html+='<button class="bill-btn'+(e.bonusClaimed?' checked-gold':'')+'" onclick="toggleStatus(\''+e.id+'\',\'bonusClaimed\')">'+(e.bonusClaimed?'💰':'⬜')+' 獎金</button>';
+      html+='<button class="bill-btn'+(e.notQualified?' checked-red':'')+'" onclick="toggleStatus(\''+e.id+'\',\'notQualified\')">'+(e.notQualified?'❌':'⬜')+' 未達標</button>';
+      html+='</div>';
+      html+='</div>';
+      if(!e.companyBilled)totalUnbilled+=e.amountPreTax||0;
+    }
+    // Check for closed cases this month
+    var closedThisMonth=cases.filter(function(c){return c.isClosed&&c.closedMonth===ym});
+    for(var j=0;j<closedThisMonth.length;j++){
+      var cc=closedThisMonth[j];
+      html+='<div class="card closed-card"><div class="card-title">'+cc.caseName+'</div>';
+      html+='<div class="badges"><span class="badge badge-red">結案</span></div>';
+      html+='<div class="event-info"><span class="event-date">'+fmtDate(cc.closedDate)+'</span>結案</div></div>';
+    }
+    // Summary
+    if(totalUnbilled>0){
+      html+='<div class="month-summary"><div class="ms-label">💰 本月待請款</div><div class="ms-value">'+fmtMoney(totalUnbilled)+'</div><div class="ms-tax">含稅 '+fmtMoney(Math.round(totalUnbilled*1.05))+'</div></div>';
+    }
+  }
+  document.getElementById('dashboardContent').innerHTML=html;
+}
+
+function toggleStatus(eventId,field){
+  var events=getEvents();
+  var e=events.find(function(x){return x.id===eventId});
+  if(!e)return;
+  e[field]=!e[field];
+  setEvents(events);
+  renderDashboard();
+}
+
+function statusBadgeClass(s){
+  var map={'套房':'badge-orange','軟裝':'badge-purple','分戶變使':'badge-teal','新型態':'badge-blue'};
+  return map[s]||'badge-gray';
+}
+
+// ===== TAB 2: ADD EVENT =====
+function initForm(){
+  document.getElementById('fDate').value=todayStr();
+  document.getElementById('fAmount').value='';
+  document.getElementById('fTax').value='';
+  document.getElementById('fType').value='';
+  document.getElementById('fCompany').value='';
+  document.getElementById('fPM').value='';
+  document.getElementById('fNote').value='';
+  // Populate case dropdown
+  var cases=getCases().filter(function(c){return!c.isClosed});
+  var sel=document.getElementById('fCase');
+  sel.innerHTML='<option value="">-- 選擇案件 --</option>';
+  for(var i=0;i<cases.length;i++){
+    sel.innerHTML+='<option value="'+cases[i].id+'">'+cases[i].caseName+'</option>';
+  }
+}
+function onTypeChange(){
+  var type=document.getElementById('fType').value;
+  var price=PRICING[type];
+  if(price!==null&&price!==undefined){document.getElementById('fAmount').value=price;updateTax()}
+  else{document.getElementById('fAmount').value='';document.getElementById('fTax').value=''}
+}
+function updateTax(){
+  var amt=parseFloat(document.getElementById('fAmount').value)||0;
+  document.getElementById('fTax').value=amt?fmtMoney(Math.round(amt*1.05)):'';
+}
+function saveEvent(){
+  var date=document.getElementById('fDate').value;
+  var caseId=document.getElementById('fCase').value;
+  var type=document.getElementById('fType').value;
+  var amt=parseFloat(document.getElementById('fAmount').value)||0;
+  var company=document.getElementById('fCompany').value;
+  var pm=document.getElementById('fPM').value;
+  var note=document.getElementById('fNote').value;
+  if(!date||!caseId||!type||!company){showToast('請填寫必要欄位');return}
+  var cases=getCases();
+  var c=cases.find(function(x){return x.id===caseId});
+  var events=getEvents();
+  events.push({id:genId(),date:date,caseId:caseId,caseName:c?c.caseName:'',eventType:type,amountPreTax:amt,amountWithTax:Math.round(amt*1.05),company:company,pm:pm,note:note,companyBilled:false,bonusClaimed:false,notQualified:false});
+  setEvents(events);
+  showToast('已新增事件');
+  switchTab('tab1');
+}
+
+// ===== TAB 3: CASES =====
+function renderCases(){
+  var cases=getCases();
+  var events=getEvents();
+  var html='';
+  if(cases.length===0){html='<div class="empty-state"><div class="empty-icon">📁</div>尚無案件</div>';document.getElementById('caseListContent').innerHTML=html;return}
+  for(var i=0;i<cases.length;i++){
+    var c=cases[i];
+    var caseEvents=events.filter(function(e){return e.caseId===c.id}).sort(function(a,b){return a.date.localeCompare(b.date)});
+    var total=caseEvents.reduce(function(s,e){return s+(e.amountPreTax||0)},0);
+    var status=c.customStatus||c.status;
+    html+='<div class="case-card">';
+    html+='<div class="case-card-header" onclick="toggleCaseExpand(\''+c.id+'\')">';
+    html+='<div><div class="case-title">'+c.caseName+'</div><div class="case-meta">'+status+' | '+caseEvents.length+'筆 | '+fmtMoney(total)+'</div></div>';
+    html+='<div class="case-actions">';
+    if(!c.isClosed){html+='<button class="btn-sm btn-close-case" onclick="closeCaseAction(\''+c.id+'\')">結案</button>'}
+    else{html+='<button class="btn-sm btn-reopen" onclick="reopenCaseAction(\''+c.id+'\')">重開</button>'}
+    html+='<button class="btn-sm btn-delete" onclick="deleteCaseAction(\''+c.id+'\')">刪除</button>';
+    html+='</div></div>';
+    // Timeline
+    html+='<div class="case-timeline'+(expandedCase===c.id?' open':'')+'">';
+    for(var j=0;j<caseEvents.length;j++){
+      var ev=caseEvents[j];
+      var statusIcons='';
+      if(ev.companyBilled)statusIcons+=' <span class="tl-status" style="color:#27AE60">✅已請款</span>';
+      if(ev.bonusClaimed)statusIcons+=' <span class="tl-status" style="color:#D97706">💰獎金</span>';
+      if(ev.notQualified)statusIcons+=' <span class="tl-status" style="color:#E74C3C">❌未達標</span>';
+      html+='<div class="tl-item">'+fmtDate(ev.date)+' '+ev.eventType+' '+fmtMoney(ev.amountPreTax)+' ['+ev.company+']'+statusIcons+'</div>';
+    }
+    if(caseEvents.length===0)html+='<div class="tl-item" style="color:#999">尚無事件</div>';
+    html+='</div></div>';
+  }
+  document.getElementById('caseListContent').innerHTML=html;
+}
+function toggleCaseExpand(id){expandedCase=expandedCase===id?null:id;renderCases()}
+function closeCaseAction(id){if(!confirm('確定結案？'))return;var cases=getCases();var c=cases.find(function(x){return x.id===id});if(!c)return;c.isClosed=true;c.closedDate=todayStr();c.closedMonth=todayStr().substring(0,7);setCases(cases);showToast('已結案');renderCases();renderDashboard()}
+function reopenCaseAction(id){var cases=getCases();var c=cases.find(function(x){return x.id===id});if(!c)return;c.isClosed=false;c.closedDate=null;c.closedMonth=null;setCases(cases);showToast('已重開');renderCases();renderDashboard()}
+function deleteCaseAction(id){if(!confirm('確定刪除？所有相關事件也會被刪除。'))return;var cases=getCases().filter(function(x){return x.id!==id});setCases(cases);var events=getEvents().filter(function(x){return x.caseId!==id});setEvents(events);showToast('已刪除');renderCases();renderDashboard()}
+function openAddCaseModal(){document.getElementById('mName').value='';document.getElementById('mStatus').value='套房';document.getElementById('mCustomStatus').value='';document.getElementById('customStatusGroup').style.display='none';document.getElementById('mPM').value='';document.getElementById('mDate').value=todayStr();document.getElementById('addCaseModal').classList.add('open')}
+function closeAddCaseModal(){document.getElementById('addCaseModal').classList.remove('open')}
+function toggleCustomStatus(){document.getElementById('customStatusGroup').style.display=document.getElementById('mStatus').value==='其他'?'block':'none'}
+function saveNewCase(){
+  var name=document.getElementById('mName').value.trim();
+  if(!name){showToast('請輸入案件名稱');return}
+  var status=document.getElementById('mStatus').value;
+  var custom=document.getElementById('mCustomStatus').value.trim();
+  var pm=document.getElementById('mPM').value.trim();
+  var date=document.getElementById('mDate').value||todayStr();
+  var cases=getCases();
+  cases.push({id:genId(),caseName:name,status:status,customStatus:custom,pm:pm,createdDate:date,isClosed:false,closedDate:null,closedMonth:null});
+  setCases(cases);
+  closeAddCaseModal();
+  showToast('案件已新增');
+  renderCases();
+}
+
+// ===== EDIT EVENT =====
+function openEditModal(eventId){
+  var events=getEvents();
+  var e=events.find(function(x){return x.id===eventId});
+  if(!e)return;
+  document.getElementById('editId').value=e.id;
+  document.getElementById('eDate').value=e.date;
+  document.getElementById('eType').value=e.eventType;
+  document.getElementById('eAmount').value=e.amountPreTax;
+  document.getElementById('eTax').value=fmtMoney(e.amountWithTax);
+  document.getElementById('eCompany').value=e.company;
+  document.getElementById('ePM').value=e.pm||'';
+  document.getElementById('eNote').value=e.note||'';
+  document.getElementById('editEventModal').classList.add('open');
+}
+function closeEditModal(){document.getElementById('editEventModal').classList.remove('open')}
+function onEditTypeChange(){var type=document.getElementById('eType').value;var price=PRICING[type];if(price!==null&&price!==undefined){document.getElementById('eAmount').value=price;updateEditTax()}}
+function updateEditTax(){var amt=parseFloat(document.getElementById('eAmount').value)||0;document.getElementById('eTax').value=amt?fmtMoney(Math.round(amt*1.05)):''}
+function saveEditEvent(){
+  var id=document.getElementById('editId').value;
+  var events=getEvents();
+  var e=events.find(function(x){return x.id===id});
+  if(!e)return;
+  e.date=document.getElementById('eDate').value;
+  e.eventType=document.getElementById('eType').value;
+  e.amountPreTax=parseFloat(document.getElementById('eAmount').value)||0;
+  e.amountWithTax=Math.round(e.amountPreTax*1.05);
+  e.company=document.getElementById('eCompany').value;
+  e.pm=document.getElementById('ePM').value;
+  e.note=document.getElementById('eNote').value;
+  setEvents(events);
+  closeEditModal();
+  showToast('已儲存修改');
+  renderDashboard();renderCases();
+}
+
+// ===== TAB 4: SETTLEMENT =====
+function changeSettleMonth(dir){settleM+=dir;if(settleM>12){settleM=1;settleY++}if(settleM<1){settleM=12;settleY--}renderSettle()}
+function renderSettle(){
+  document.getElementById('settleLabel').textContent=settleY+'年'+settleM+'月';
+  var events=getEvents();
+  var ym=ymStr(settleY,settleM);
+  var monthEvents=events.filter(function(e){return e.date.substring(0,7)===ym});
+  
+  // Three groups
+  var companyBilledEvts=monthEvents.filter(function(e){return e.companyBilled});
+  var bonusClaimedEvts=monthEvents.filter(function(e){return e.bonusClaimed});
+  var notQualifiedEvts=monthEvents.filter(function(e){return e.notQualified});
+  
+  var html='';
+  
+  // Section 1: Green - 公司已請款
+  html+='<div class="settle-section-header" style="background:#27AE60;color:white;padding:14px 16px;border-radius:8px;font-size:15px;font-weight:700;margin:10px 16px;">✅ 公司已請款</div>';
+  if(companyBilledEvts.length===0){html+='<div style="color:#999;padding:16px;text-align:center;margin:0 16px">本月無資料</div>'}
+  else{html+='<div style="margin:0 16px">'+renderSettleGroup(companyBilledEvts)+'</div>'}
+  
+  // Section 2: Yellow - 獎金已請款
+  html+='<div class="settle-section-header" style="background:#F1C40F;color:#333;padding:14px 16px;border-radius:8px;font-size:15px;font-weight:700;margin:10px 16px;">💰 獎金已請款</div>';
+  if(bonusClaimedEvts.length===0){html+='<div style="color:#999;padding:16px;text-align:center;margin:0 16px">本月無資料</div>'}
+  else{html+='<div style="margin:0 16px">'+renderSettleGroup(bonusClaimedEvts)+'</div>'}
+  
+  // Section 3: Gray - 未達標
+  html+='<div class="settle-section-header" style="background:#95A5A6;color:white;padding:14px 16px;border-radius:8px;font-size:15px;font-weight:700;margin:10px 16px;">❌ 未達標</div>';
+  if(notQualifiedEvts.length===0){html+='<div style="color:#999;padding:16px;text-align:center;margin:0 16px">本月無資料</div>'}
+  else{html+='<div style="margin:0 16px">'+renderSettleGroup(notQualifiedEvts)+'</div>'}
+  
+  document.getElementById('settleContent').innerHTML=html;
+}
+function renderSettleGroup(evts){
+  var grouped={};
+  for(var i=0;i<evts.length;i++){
+    var e=evts[i];
+    var co=e.company||'未指定';
+    if(!grouped[co])grouped[co]={};
+    if(!grouped[co][e.caseName])grouped[co][e.caseName]=[];
+    grouped[co][e.caseName].push(e);
+  }
+  var html='';
+  var companies=Object.keys(grouped);
+  for(var ci=0;ci<companies.length;ci++){
+    var company=companies[ci];
+    html+='<div class="settle-company">【'+company+'】</div>';
+    var caseNames=Object.keys(grouped[company]);
+    for(var ni=0;ni<caseNames.length;ni++){
+      var caseName=caseNames[ni];
+      var items=grouped[company][caseName];
+      var sub=items.reduce(function(s,e){return s+(e.amountPreTax||0)},0);
+      html+='<div class="settle-case">▎'+caseName+'</div>';
+      html+='<table class="settle-table">';
+      for(var ei=0;ei<items.length;ei++){
+        var ev=items[ei];
+        html+='<tr><td>'+fmtDate(ev.date).substring(5)+'</td><td>'+ev.eventType+'</td><td>'+fmtMoney(ev.amountPreTax)+'</td><td>'+fmtMoney(ev.amountWithTax)+'</td></tr>';
+      }
+      html+='<tr class="settle-subtotal"><td colspan="2">小計（'+items.length+'筆）</td><td>'+fmtMoney(sub)+'</td><td>'+fmtMoney(Math.round(sub*1.05))+'</td></tr>';
+      html+='</table>';
+    }
+  }
+  return html;
+}
+
+
+// ===== EXPORT/IMPORT =====
+function exportJSON(){
+  var data={cases:getCases(),events:getEvents(),exportDate:todayStr()};
+  var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');a.href=url;a.download='fee-tracker-backup-'+todayStr()+'.json';a.click();URL.revokeObjectURL(url);
+}
+function importJSON(inputEl){
+  var file=inputEl.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      var data=JSON.parse(ev.target.result);
+      if(data.cases&&data.events){setCases(data.cases);setEvents(data.events);renderDashboard();renderCases();renderSettle();showToast('匯入成功！')}
+      else{alert('檔案格式不正確')}
+    }catch(err){alert('匯入失敗: '+err.message)}
+  };
+  reader.readAsText(file);inputEl.value='';
+}
+
+// ===== TOAST =====
+function showToast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2000)}
+</script>
+</body>
+</html>
