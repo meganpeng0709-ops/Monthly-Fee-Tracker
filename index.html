@@ -244,10 +244,13 @@ function loadFromCloud(){
       else if(e.bonusClaimed==='FALSE'||!e.bonusClaimed)e.bonusClaimed=false;
       if(e.notQualified==='TRUE')e.notQualified=true;
       else if(e.notQualified==='FALSE'||!e.notQualified)e.notQualified=false;
+      if(e.date&&e.date.length>10)e.date=e.date.substring(0,10);
       if(e.amountPreTax)e.amountPreTax=Number(e.amountPreTax);
       if(e.amountWithTax)e.amountWithTax=Number(e.amountWithTax);
     });
     MEM_CA.forEach(function(c){
+      if(c.createdDate&&c.createdDate.length>10)c.createdDate=c.createdDate.substring(0,10);
+      if(c.closedDate&&c.closedDate.length>10)c.closedDate=c.closedDate.substring(0,10);
       if(c.isClosed==='TRUE')c.isClosed=true;
       else if(c.isClosed==='FALSE'||!c.isClosed)c.isClosed=false;
     });
