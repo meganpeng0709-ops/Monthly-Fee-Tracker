@@ -215,16 +215,24 @@ function scheduleSyncToCloud(){
 function syncToCloud(){
   if(!IS_ONLINE)return;
   var payload=JSON.stringify({action:'saveAll',cases:MEM_CA,events:MEM_EV});
-  fetch(API_URL,{method:'POST',redirect:'follow',body:payload})
+  fetch(API_URL,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain'},body:payload})
   .then(function(){showToast('\u{1F4BE} \u5DF2\u540C\u6B65')})
   .catch(function(err){console.warn('Sync failed:',err);IS_ONLINE=false})
 }
 
 // Load from Google Sheets API
 function loadFromCloud(){
+  function fetchJSON(url){
+    return fetch(url,{method:'GET',redirect:'follow',headers:{'Accept':'application/json'}}).then(function(r){
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      return r.text();
+    }).then(function(txt){
+      try{return JSON.parse(txt)}catch(e){console.error('API parse error:',txt.substring(0,200));return[];}
+    });
+  }
   return Promise.all([
-    fetch(API_URL+'?action=getCases').then(function(r){return r.json()}),
-    fetch(API_URL+'?action=getEvents').then(function(r){return r.json()})
+    fetchJSON(API_URL+'?action=getCases'),
+    fetchJSON(API_URL+'?action=getEvents')
   ]).then(function(results){
     MEM_CA=results[0]||[];
     MEM_EV=results[1]||[];
