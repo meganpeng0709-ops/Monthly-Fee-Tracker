@@ -275,6 +275,7 @@ var expandedCase=null;
 // ===== INIT =====
 (function(){
   var d=new Date();viewY=d.getFullYear();viewM=d.getMonth()+1;settleY=viewY;settleM=viewM;
+  document.getElementById('monthLabel').textContent=viewY+'年'+viewM+'月';
   document.getElementById('dashboardContent').innerHTML='<div class="empty-state"><div class="empty-icon">⏳</div>載入中...</div>';
   setupTabs();
   // Try cloud first, fallback to local
